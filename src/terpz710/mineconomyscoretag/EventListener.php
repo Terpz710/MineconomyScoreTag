@@ -56,7 +56,7 @@ class EventListener implements Listener {
         $tag = $event->getTag();
 
         $balance = Mineconomy::getInstance()->hasBalance($player)
-            ? $tokens->getFunds($player)
+            ? Mineconomy::getInstance()->getFunds($player)
             : 0;
 
         match ($tag->getName()) {
