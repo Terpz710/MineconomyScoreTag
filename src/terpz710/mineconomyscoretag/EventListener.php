@@ -9,9 +9,11 @@ use pocketmine\event\player\PlayerJoinEvent;
 
 use pocketmine\player\Player;
 
+use pocketmine\Server;
+
 use terpz710\mineconomy\Mineconomy;
 
-use terpz710\mineconomy\event\BalanceChangeEvent;
+use terpz710\mineconomy\event\MoneyBalanceChangeEvent;
 
 use Ifera\ScoreHud\ScoreHud;
 use Ifera\ScoreHud\scoreboard\ScoreTag;
@@ -20,39 +22,45 @@ use Ifera\ScoreHud\event\PlayerTagsUpdateEvent;
 
 class EventListener implements Listener {
 
-    protected function updateTag(Player $player) {
+    protected function updateTag(Player|string $player) : void{
         if (class_exists(ScoreHud::class)) {
-            $eco = Mineconomy::getInstance();
-            $name = $player->getName();
-            $balance = $eco->getBalance($name);
+            if ($player instanceof Player) {
+                $balance = Mineconomy::getInstance()->getFunds($player);
+            } else {
+                $balance = Mineconomy::getInstance()->getFunds($player);
+                $player = Server::getInstance()->getPlayerExact($player);
+            }
 
-            $ev = new PlayerTagsUpdateEvent(
-                $player,
-                [
-                    new ScoreTag("mineconomy.balance", (string)$balance),
-                ]
-            );
-            $ev->call();
+            if ($player instanceof Player) {
+                $ev = new PlayerTagsUpdateEvent(
+                    $player,
+                    [
+                        new ScoreTag("mineconomy.balance", number_format((float)$balance)),
+                    ]
+                );
+                $ev->call();
+            }
         }
     }
 
-    public function onJoin(PlayerJoinEvent $event) : void{
+    public function join(PlayerJoinEvent $event) : void{
         $this->updateTag($event->getPlayer());
     }
 
-    public function onBalanceChange(BalanceChangeEvent $event) : void{
+    public function change(MoneyBalanceChangeEvent $event) : void{
         $this->updateTag($event->getPlayer());
     }
 
-    public function onTagResolve(TagsResolveEvent $event) : void{
+    public function resolve(TagsResolveEvent $event) : void{
         $player = $event->getPlayer();
         $tag = $event->getTag();
-        $eco = Mineconomy::getInstance();
-        $name = $player->getName();
-        $balance = $eco->getBalance($name);
+
+        $balance = Mineconomy::getInstance()->hasBalance($player)
+            ? $tokens->getFunds($player)
+            : 0;
 
         match ($tag->getName()) {
-            "mineconomy.balance" => $tag->setValue((string)$balance),
+            "mineconomy.balance" => $tag->setValue(number_format((float)$balance)),
             default => null,
         };
     }
